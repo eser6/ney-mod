@@ -1,19 +1,64 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function Dashboard() {
-  const isSubscribed = false; // Replace this later with auth/payment logic
-  const remainingCredits = 1; // E.g. max 2 per 24hr for free users
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const isSubscribed = false;
+  const remainingCredits = 1;
 
   const tools = [
     { name: "Cold Email", emoji: "📧", href: "/tool-email" },
     { name: "Proposal", emoji: "📄", href: "/tool-proposal" },
     { name: "Brand Kit", emoji: "🎨", href: "/tool-brandkit" },
     { name: "IG Captions", emoji: "📱", href: "/tool-igcaption" },
-    { name: "Landing Page", emoji: "🌐", href: "/tool-landingpage" }
+    { name: "Landing Page", emoji: "🌐", href: "/tool-landingpage" },
   ];
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        router.push("/login");
+      } else {
+        setUser(data.user);
+      }
+      setLoading(false);
+    };
+
+    getSession();
+  }, [router]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
+  const handleUpdateEmail = async () => {
+    const newEmail = prompt("Enter new email:");
+    if (newEmail) {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) alert(error.message);
+      else alert("Email updated successfully!");
+    }
+  };
+
+  const handleChangePassword = async () => {
+    const newPassword = prompt("Enter new password:");
+    if (newPassword) {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) alert(error.message);
+      else alert("Password changed!");
+    }
+  };
+
+  if (loading) {
+    return <div className="text-white p-10">Loading dashboard...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-black text-white px-6 py-8">
@@ -27,7 +72,8 @@ export default function Dashboard() {
         {/* Account Info */}
         <section className="bg-[#111] p-6 rounded-2xl border border-gray-800 shadow-md">
           <h2 className="text-2xl font-semibold mb-4">👤 Account</h2>
-          <p><span className="text-gray-400">Email:</span> johndoe@example.com</p>
+          <p><span className="text-gray-400">Name:</span> {user?.user_metadata?.name || "N/A"}</p>
+          <p><span className="text-gray-400">Email:</span> {user?.email}</p>
           <p><span className="text-gray-400">Plan:</span> {isSubscribed ? "Premium 🔥" : "Free 🧊"}</p>
           {!isSubscribed && (
             <p className="mt-2 text-yellow-400 text-sm">
@@ -55,9 +101,9 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-2xl">{tool.emoji}</span>
                     {!isLocked ? (
-                      <Link href={tool.href} className="text-sm text-blue-500 hover:underline">
+                      <a href={tool.href} className="text-sm text-blue-500 hover:underline">
                         Open
-                      </Link>
+                      </a>
                     ) : (
                       <span className="text-xs text-red-400">Premium</span>
                     )}
@@ -73,10 +119,18 @@ export default function Dashboard() {
         <section className="bg-[#111] p-6 rounded-2xl border border-gray-800 shadow-md">
           <h2 className="text-2xl font-semibold mb-4">⚙️ Settings</h2>
           <ul className="space-y-3 text-sm text-gray-300">
-            <li className="hover:text-white cursor-pointer">Change password</li>
-            <li className="hover:text-white cursor-pointer">Update email</li>
-            <li className="hover:text-white cursor-pointer">Manage notifications</li>
-            <li className="hover:text-white cursor-pointer text-red-500">Log out</li>
+            <li className="hover:text-white cursor-pointer" onClick={handleChangePassword}>
+              Change password
+            </li>
+            <li className="hover:text-white cursor-pointer" onClick={handleUpdateEmail}>
+              Update email
+            </li>
+            <li className="hover:text-white cursor-not-allowed opacity-50">
+              Manage notifications (coming soon)
+            </li>
+            <li className="hover:text-white cursor-pointer text-red-500" onClick={handleLogout}>
+              Log out
+            </li>
           </ul>
         </section>
       </div>
